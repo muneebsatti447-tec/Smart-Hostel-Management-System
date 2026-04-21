@@ -1,0 +1,631 @@
+================================================================================
+           SMART HOSTEL MANAGEMENT SYSTEM
+           FINAL YEAR PROJECT REPORT
+           Department of Computer Science
+================================================================================
+
+                     Submitted by: [Your Name]
+                     Submitted to: [Supervisor Name]
+                     Date        : April 2026
+                     Language    : C# (.NET 8)
+
+================================================================================
+TABLE OF CONTENTS
+================================================================================
+ 1. Problem Statement
+ 2. Objectives
+ 3. System Overview
+ 4. Functional Requirements
+ 5. Non-Functional Requirements
+ 6. OOP Concepts Used
+ 7. System Architecture
+ 8. Module Descriptions
+ 9. Sample Output Screens
+10. Testing & Validation
+11. Conclusion
+================================================================================
+
+
+================================================================================
+1. PROBLEM STATEMENT
+================================================================================
+
+University hostels house hundreds of students and require coordinated management
+of rooms, fees, maintenance complaints, attendance, and financial records.
+Traditional manual systems are error-prone, time-consuming, and lack real-time
+visibility.
+
+The Smart Hostel Management System (SHMS) addresses these challenges by
+providing a digital, menu-driven, role-based console application that automates:
+
+  • Student registration and room allocation
+  • Monthly mess billing and fine tracking
+  • Complaint registration and assignment to maintenance staff
+  • Daily attendance and late-entry monitoring
+  • Comprehensive report generation for administration
+
+This system simulates a real-world university hostel environment and replaces
+paper-based workflows with persistent, file-backed digital records.
+
+
+================================================================================
+2. OBJECTIVES
+================================================================================
+
+Primary Objectives:
+  ✓ Build a complete hostel management solution in C#
+  ✓ Implement role-based access (Admin / Warden)
+  ✓ Automate room allocation with a smart matching algorithm
+  ✓ Provide full financial tracking (mess, rent, fines)
+  ✓ Maintain persistent data using JSON file storage
+
+Secondary Objectives:
+  ✓ Demonstrate all four pillars of OOP in a real-world context
+  ✓ Implement interfaces (IReportable, ICalculatable) for abstraction
+  ✓ Provide intelligent analytics (problematic student detection, occupancy %)
+  ✓ Generate and save formatted text reports to disk
+  ✓ Handle exceptions gracefully throughout the application
+
+
+================================================================================
+3. SYSTEM OVERVIEW
+================================================================================
+
+The Smart Hostel Management System is a C# console application built on .NET 8.
+It follows a layered, modular architecture with clear separation of concerns:
+
+  ┌─────────────────────────────────────────────────────────┐
+  │                   PRESENTATION LAYER                    │
+  │              Program.cs  +  ConsoleHelper               │
+  └───────────────────────────┬─────────────────────────────┘
+                              │
+  ┌───────────────────────────▼─────────────────────────────┐
+  │                    SERVICE LAYER                        │
+  │  StudentService │ RoomService │ ComplaintService        │
+  │  MessService    │ FineService │ AttendanceService       │
+  │  ReportService  │ AuthService │ NotificationService     │
+  └───────────────────────────┬─────────────────────────────┘
+                              │
+  ┌───────────────────────────▼─────────────────────────────┐
+  │                   DATA / MODEL LAYER                    │
+  │  Person → Student, Staff, Warden, Admin (Inheritance)  │
+  │  Room │ Complaint │ MessBill │ Fine │ Attendance        │
+  │  DataStore (central in-memory + JSON persistence)      │
+  └─────────────────────────────────────────────────────────┘
+
+Key Design Decisions:
+  • Static DataStore class acts as the single source of truth in memory
+  • All changes are flushed to JSON files via DataStore.SaveAll()
+  • Data is loaded on startup via DataStore.LoadAll()
+  • Sample seed data is inserted only once (guard check)
+  • Services are stateless — they operate on DataStore collections
+
+
+================================================================================
+4. FUNCTIONAL REQUIREMENTS
+================================================================================
+
+FR-01  Authentication
+       • Admin login with ID + password
+       • Warden login with ID + password
+       • Role-based menu rendering after login
+
+FR-02  Student Management
+       • Add student (with CNIC, phone, email validation)
+       • View all students in a formatted table
+       • Update student details (non-destructive edits)
+       • Delete student (removes from room occupancy)
+       • Search by ID, CNIC, or partial name
+       • Full profile view with dues and complaints
+
+FR-03  Room Management
+       • Add rooms (Single/Double/Triple, rent, gender)
+       • Smart allocation algorithm (gender + availability + capacity)
+       • Auto and manual room selection
+       • Room change request (notifies warden)
+       • Set room status (Available / Occupied / Maintenance)
+       • Filter rooms by type, status, or gender
+       • Occupancy dashboard with percentage
+
+FR-04  Mess Management
+       • Generate monthly mess bill per student
+       • Per-meal rate billing (Rs.150/meal default)
+       • Automatic penalty for overdue dues > Rs.3000
+       • Mark bills as paid (clears student dues)
+       • Monthly revenue summary table
+
+FR-05  Complaint Management
+       • Register complaint (categories: Electricity, Water, Internet,
+         Cleanliness, Noise, Other)
+       • Status tracking: Pending → InProgress → Resolved
+       • Assign complaint to available staff member
+       • Auto-notify warden on new complaint
+       • Auto-notify student on status change
+       • Filter by status, category, or student
+
+FR-06  Fine System
+       • Issue fines (LateEntry, MessDues, RoomDamage, etc.)
+       • Automatic late-entry fine after every 3 late entries
+       • View all fines in table format
+       • Mark fines as paid
+
+FR-07  Attendance System
+       • Mark daily attendance for all active students
+       • Status options: Present, Absent, Late Entry
+       • Record entry time for late entries
+       • Automatic fine trigger at 3-late-entry threshold
+       • Attendance summary table and absentee report
+
+FR-08  Notification System
+       • Internal notification queue per recipient ID
+       • Auto-generated on: bill creation, fine issue, room allocation,
+         complaint updates, room change requests
+       • View and mark-as-read functionality
+
+FR-09  Reporting System
+       • Student Report (full profiles + dues summary)
+       • Room Occupancy Report (per-room + totals)
+       • Financial Report (mess, fines, room rent, collected vs pending)
+       • Complaint Summary (by status, by category, details)
+       • Attendance Report (summary table, absentees)
+       • Problematic Student Analysis (ranked by composite score)
+       • Expense Analytics (monthly revenue table)
+       • All reports saved to /Reports/ folder as .txt files
+
+FR-10  Data Persistence
+       • JSON serialization via System.Text.Json
+       • 8 separate JSON files (students, rooms, staff, complaints,
+         messbills, fines, attendance, notifications)
+       • Loaded on startup, saved on every mutation
+
+
+================================================================================
+5. NON-FUNCTIONAL REQUIREMENTS
+================================================================================
+
+NFR-01  Usability
+        • Clear menu-driven interface with numbered options
+        • Color-coded feedback (green=success, red=error, yellow=warning)
+        • Table rendering for list views
+        • Password masking on login
+
+NFR-02  Reliability
+        • Input validation on all data entry points
+        • Duplicate detection (CNIC uniqueness)
+        • Graceful exception handling with user-friendly messages
+        • Corrupt file tolerance (TryLoad skips bad JSON)
+
+NFR-03  Maintainability
+        • Modular folder structure (Models, Services, Interfaces, Utilities)
+        • Single responsibility per service class
+        • Shared DataStore eliminates data duplication
+
+NFR-04  Scalability
+        • Collections can grow without code changes
+        • ID generators auto-increment based on count
+        • Adding new features requires only a new Service class
+
+NFR-05  Performance
+        • In-memory operations are O(n) using LINQ
+        • File I/O only on save events (not per operation)
+
+
+================================================================================
+6. OOP CONCEPTS USED
+================================================================================
+
+─── A. ENCAPSULATION ─────────────────────────────────────────────────────────
+
+Definition: Bundling data and the methods that operate on it inside a class,
+hiding internal details from the outside world.
+
+Implementation Examples:
+
+  Student class:
+    private decimal _messDues;        // private backing field
+    private decimal _totalFines;
+
+    public decimal MessDues           // public property with validation
+    {
+        get => _messDues;
+        set => _messDues = value >= 0
+            ? value
+            : throw new ArgumentException("Mess dues cannot be negative.");
+    }
+
+  Room class:
+    private decimal _monthlyRent;
+
+    public decimal MonthlyRent
+    {
+        get => _monthlyRent;
+        set => _monthlyRent = value > 0
+            ? value
+            : throw new ArgumentException("Rent must be positive.");
+    }
+
+  Admin / Warden classes:
+    private readonly string _password;  // password never exposed publicly
+    public bool Authenticate(string pwd) => _password == pwd;
+
+Benefit: External code cannot set negative dues or access passwords directly.
+All mutations go through validated property setters or methods.
+
+─── B. INHERITANCE ────────────────────────────────────────────────────────────
+
+Definition: A child class inherits fields and methods from a parent class,
+enabling code reuse and logical hierarchy.
+
+Hierarchy in this project:
+
+          Person  (abstract base)
+         /   |   \
+      Student Staff  Warden
+                       |
+                      Admin  (separate but similar pattern)
+
+  Person contains: Id, Name, CNIC, Phone, Email, Gender, DateAdded
+  Person declares: abstract string GetRole()
+
+  Student extends Person:
+    + RoomNumber, Department, Semester, Status
+    + MessDues, TotalFines, ComplaintCount, LateEntries
+    + TotalDues(), CalculateFee(), CalculateFine()
+
+  Staff extends Person:
+    + StaffRole enum, AssignedComplaints, IsAvailable
+
+  Warden extends Person:
+    + Designation, Authenticate(string)
+
+Benefit: Common person attributes are defined once. All subclasses share
+Name, CNIC, Phone without code duplication.
+
+─── C. POLYMORPHISM ───────────────────────────────────────────────────────────
+
+Definition: The same method name behaves differently depending on the
+type of object that calls it.
+
+  1. Method Overriding (Runtime Polymorphism):
+
+     Person.GetRole() is abstract — each subclass overrides it:
+       Student.GetRole()  → returns "Student"
+       Staff.GetRole()    → returns "Staff (Electrician)" etc.
+       Warden.GetRole()   → returns "Warden"
+
+  2. Interface Polymorphism:
+
+     Both Student and Room implement ICalculatable:
+
+       Student.CalculateFine():
+         = TotalFines + (LateEntries × Rs.100) + 5% penalty on overdue mess
+
+       Room.CalculateFine():          // damage deposit differs by room type
+         Single  → Rs.500
+         Double  → Rs.400
+         Triple  → Rs.300
+
+     The same CalculateFine() call returns different values for different types.
+
+  3. Switch Expression Polymorphism:
+
+     Room.Capacity uses a switch expression based on RoomType:
+       Single → 1, Double → 2, Triple → 3
+
+Benefit: New room types or student categories can be added without
+changing the calling code — open/closed principle satisfied.
+
+─── D. ABSTRACTION ────────────────────────────────────────────────────────────
+
+Definition: Hiding implementation details and exposing only what is
+necessary through abstract classes and interfaces.
+
+  Interface IReportable:
+    string GenerateReport();
+    Implemented by: Student, Room, Complaint, MessBill, Fine
+
+  Interface ICalculatable:
+    decimal CalculateFee();
+    decimal CalculateFine();
+    Implemented by: Student, Room
+
+  Abstract class Person:
+    Forces all subclasses to implement GetRole()
+    Provides shared fields without allowing direct instantiation
+
+  ConsoleHelper (Utility abstraction):
+    All console I/O is routed through ConsoleHelper methods,
+    abstracting color management, table rendering, and input formatting
+    away from business logic.
+
+Benefit: Services work with IReportable objects without knowing their
+concrete type. Adding a new reportable entity only requires implementing
+the interface.
+
+
+================================================================================
+7. SYSTEM ARCHITECTURE
+================================================================================
+
+PROJECT FOLDER STRUCTURE
+─────────────────────────
+
+SmartHostel/
+├── SmartHostel.csproj          ← .NET 8 project file
+├── Program.cs                  ← Entry point, all menus
+│
+├── Models/                     ← Domain entities (POCOs)
+│   ├── Person.cs               ← Abstract base class
+│   ├── Student.cs              ← Inherits Person, implements IReportable + ICalculatable
+│   ├── Staff.cs                ← Staff, Warden, Admin models
+│   ├── Room.cs                 ← Room entity with smart capacity logic
+│   ├── Complaint.cs            ← Complaint entity
+│   ├── Finance.cs              ← MessBill and Fine entities
+│   └── Attendance.cs           ← AttendanceRecord and Notification
+│
+├── Interfaces/                 ← Contracts for abstraction
+│   ├── IReportable.cs          ← GenerateReport()
+│   └── ICalculatable.cs        ← CalculateFee(), CalculateFine()
+│
+├── Services/                   ← Business logic layer
+│   ├── AuthService.cs          ← Login/logout, role management
+│   ├── StudentService.cs       ← CRUD + search for students
+│   ├── RoomService.cs          ← Room management + smart allocation
+│   ├── ComplaintService.cs     ← Complaint lifecycle management
+│   ├── MessFineService.cs      ← Mess billing and fine issuance
+│   ├── AttendanceNotifService.cs ← Attendance + notifications
+│   └── ReportService.cs        ← All report generation
+│
+├── Utilities/
+│   └── ConsoleHelper.cs        ← UI rendering, tables, input, colors
+│                                  Validator — CNIC, phone, email checks
+│
+├── Data/
+│   ├── DataStore.cs            ← Central in-memory store + JSON I/O
+│   └── Saved/                  ← Runtime JSON files (auto-created)
+│       ├── students.json
+│       ├── rooms.json
+│       ├── staff.json
+│       ├── complaints.json
+│       ├── messbills.json
+│       ├── fines.json
+│       ├── attendance.json
+│       └── notifications.json
+│
+└── Reports/                    ← Auto-saved report .txt files
+
+
+DATA FLOW DIAGRAM
+─────────────────
+
+  [User Input via Console]
+         │
+         ▼
+  [Program.cs Menu]  ──selects──►  [Service Layer]
+                                       │
+                              reads/writes
+                                       │
+                                       ▼
+                              [DataStore (Memory)]
+                                       │
+                              serializes/deserializes
+                                       │
+                                       ▼
+                              [JSON Files on Disk]
+
+
+================================================================================
+8. MODULE DESCRIPTIONS
+================================================================================
+
+AuthService
+  Manages login flow for Admin and Warden roles.
+  Stores currently active role. Password entry is masked.
+  Uses Authenticate() method on Admin/Warden objects (encapsulation).
+
+StudentService
+  Full CRUD operations. Input validation via Validator utility class.
+  Duplicate CNIC detection. Integrates with RoomService for allocation.
+  Search supports ID, CNIC, and partial name matching.
+
+RoomService
+  Smart allocation algorithm: filters by gender compatibility, availability,
+  and capacity; sorts by best-fit (fewest free spots first), then lowest rent.
+  Supports auto-select (best match) or manual selection from a list.
+  Occupancy dashboard shows real-time statistics.
+
+ComplaintService
+  Full lifecycle: Register → Assign → InProgress → Resolved.
+  Integrates with NotificationService to alert warden and student.
+  Staff assignment tracks load (AssignedComplaints counter).
+
+MessFineService
+  MessService: per-meal billing, automatic penalty calculation for overdue dues,
+  monthly revenue summaries grouping bills by year/month.
+  FineService: manual fine issuance, automatic late-entry fines (triggered
+  by AttendanceService every 3 late entries).
+
+AttendanceNotifService
+  AttendanceService marks attendance for all active students in sequence.
+  Captures entry time for late entries. Issues automatic fines on threshold.
+  Reports: today, full summary table, high-absentee list.
+  NotificationService is a simple in-memory queue with read tracking.
+
+ReportService
+  Seven report types, each building a StringBuilder and printing to console.
+  Every report is also saved as a timestamped .txt file in /Reports/.
+  ProblematicStudentReport uses a composite scoring formula:
+    Score = (Complaints × 3) + (LateEntries × 2) + (Absent days) + (dues bonus)
+
+
+================================================================================
+9. SAMPLE OUTPUT SCREENS
+================================================================================
+
+─── LOGIN SCREEN ──────────────────────────────────────────────────────────────
+
+  ════════════════════════════════════════════════════════════════
+         🏢  SMART HOSTEL MANAGEMENT SYSTEM  🏢
+             University Hostel Administration
+  ════════════════════════════════════════════════════════════════
+
+  ──────────────────────────────────────────────────────────────
+    LOGIN
+  ──────────────────────────────────────────────────────────────
+    1. Admin Login
+    2. Warden Login
+
+  ► Enter choice [1-2] or [0] to go back: 1
+  ► Username: ADM001
+  ► Password: ********
+
+  ✓ Welcome, System Admin!
+
+─── STUDENT TABLE ─────────────────────────────────────────────────────────────
+
+  +--------+---------------+--------+-----+------+-----------+--------+
+  |ID      |Name           |Gender  |Dept |Room  |Dues (Rs.) |Status  |
+  +--------+---------------+--------+-----+------+-----------+--------+
+  |STU001  |Ali Raza       |Male    |CS   |A102  |4,700      |Active  |
+  |STU002  |Sara Khan      |Female  |EE   |B102  |2,000      |Active  |
+  |STU003  |Ahmed Bilal    |Male    |ME   |A103  |10,300     |Active  |
+  |STU004  |Fatima Noor    |Female  |BBA  |B103  |1,600      |Active  |
+  +--------+---------------+--------+-----+------+-----------+--------+
+  Total: 4 student(s)
+
+─── STUDENT PROFILE ───────────────────────────────────────────────────────────
+
+  ════════════════════════════════════════════════════════════════
+   STUDENT REPORT
+  ════════════════════════════════════════════════════════════════
+   Name       : Ahmed Bilal
+   ID         : STU003
+   CNIC       : 42301-3456789-3
+   Gender     : Male
+   Department : ME
+   Semester   : 1st
+   Room       : A103
+   Status     : Active
+   Mess Dues  : Rs. 9,000.00
+   Total Fines: Rs. 1,700.00
+   Total Dues : Rs. 10,700.00
+   Complaints : 4
+   Late Entries: 5
+   Attendance : 18 present / 12 absent
+  ════════════════════════════════════════════════════════════════
+
+─── OCCUPANCY DASHBOARD ───────────────────────────────────────────────────────
+
+  Total Rooms       : 8
+  Total Capacity    : 18 beds
+  Currently Occupied: 4 beds
+  Occupancy Rate    : 22.2%
+
+  ✓ Available       : 5 room(s)  (incl. 2 partially filled)
+  ✗ Fully Occupied  : 2 room(s)
+  ⚠ Under Maint.    : 1 room(s)
+
+─── MESS INVOICE ──────────────────────────────────────────────────────────────
+
+  ════════════════════════════════════════════════════════════════
+   MESS INVOICE
+  ════════════════════════════════════════════════════════════════
+   Bill ID    : BIL004
+   Student    : Ali Raza (STU001)
+   Period     : April 2026
+   Meals      : 28 meals @ Rs.150/meal
+   Penalty    : Rs. 0.00
+   ──────────────────────────────────────────────────────────────
+   TOTAL      : Rs. 4,200.00
+   Status     : ✗ UNPAID
+   Generated  : 15-Apr-2026
+  ════════════════════════════════════════════════════════════════
+
+─── FINANCIAL REPORT ──────────────────────────────────────────────────────────
+
+  ─── MESS FEES ───────────────────────────────────────────────
+  Total Billed  : Rs. 12,250.00
+  Collected     : Rs. 4,200.00
+  Pending       : Rs. 8,050.00
+
+  ─── FINES ────────────────────────────────────────────────────
+  Total Fines   : Rs. 700.00
+  Collected     : Rs. 0.00
+  Pending       : Rs. 700.00
+
+  ─── ROOM RENT (Monthly Estimate) ─────────────────────────────
+  Estimated Rev : Rs. 21,000.00
+
+  ─── TOTAL FINANCIALS ────────────────────────────────────────
+  Total Income  : Rs. 25,200.00
+  Total Pending : Rs. 8,750.00
+
+─── PROBLEMATIC STUDENT REPORT ────────────────────────────────────────────────
+
+  Rank  Name                 Complaints   Late   Absent   Dues         Score
+  ──────────────────────────────────────────────────────────────────────────
+  1     Ahmed Bilal          4            5      12       Rs.9,000     29
+  2     Ali Raza             1            2      5        Rs.4,500     17
+  3     Sara Khan            2            0      2        Rs.2,000     8
+  4     Fatima Noor          0            1      1        Rs.1,500     3
+
+
+================================================================================
+10. TESTING & VALIDATION
+================================================================================
+
+Input Validation:
+  ✓ CNIC format: regex ^\\d{5}-\\d{7}-\\d{1}$
+  ✓ Phone format: regex ^0\\d{3}-\\d{7}$
+  ✓ Email format: standard @ pattern
+  ✓ Positive-only financial values enforced via property setters
+  ✓ Duplicate CNIC prevention before insert
+
+Exception Scenarios Handled:
+  ✓ Student/Room/Complaint not found → error message, no crash
+  ✓ Invalid menu choice → re-prompt loop
+  ✓ Invalid number input (non-numeric) → TryParse guards
+  ✓ Corrupt JSON files → TryLoad silently skips
+  ✓ Already-paid bill → warning, no double-payment
+
+Business Rule Validation:
+  ✓ Cannot allocate maintenance room to student
+  ✓ Cannot allocate female room to male student (and vice versa)
+  ✓ Cannot generate duplicate monthly mess bill
+  ✓ Room status auto-updates on allocation/deallocation
+
+
+================================================================================
+11. CONCLUSION
+================================================================================
+
+The Smart Hostel Management System successfully demonstrates how real-world
+institutional software can be designed and built using core computer science
+principles in C#.
+
+Key achievements:
+
+  ✓ All four OOP pillars implemented meaningfully (not superficially)
+  ✓ Clean layered architecture separating UI, business logic, and data
+  ✓ Persistent storage using JSON serialization
+  ✓ Smart algorithms (room allocation, problematic student scoring)
+  ✓ Role-based access control for Admin and Warden
+  ✓ Comprehensive reporting saved to disk
+  ✓ Full input validation and exception handling
+  ✓ Notification system for internal alerts
+  ✓ Attendance automation with auto-fine triggering
+
+This project can be extended with:
+  • ASP.NET Core web interface
+  • SQL Server database backend (replace JSON)
+  • Email/SMS notifications via SMTP/Twilio
+  • Student self-service portal
+  • Biometric attendance integration
+
+The codebase is designed to be modular and scalable — adding a new feature
+requires only a new Service class and menu entries in Program.cs, with no
+changes to existing code, honoring the Open/Closed Principle.
+
+================================================================================
+                          END OF REPORT
+================================================================================
